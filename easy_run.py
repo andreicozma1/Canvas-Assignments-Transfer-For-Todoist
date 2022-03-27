@@ -67,7 +67,7 @@ def select_courses():
     if config['courses']:
         use_previous_input = input("You have previously selected courses. Would you like to use the courses selected last time? (y/n) ")
         print("")
-        if use_previous_input == "y" or use_previous_input == "Y":
+        if use_previous_input in ["y", "Y"]:
             for course_id in config['courses']:
                 # print(course_id)
                 course_ids.append(int(course_id))
@@ -75,13 +75,16 @@ def select_courses():
                 courses_id_name_dict[course.get('id', None)] = re.sub(r'[^-a-zA-Z0-9._\s]', '', course.get('name', ''))
             return
 
-    # If the user does not choose to use courses selected last time
-    i = 1
-    for course in response.json():
+    for i, course in enumerate(response.json(), start=1):
         courses_id_name_dict[course.get('id', None)] = re.sub(r'[^-a-zA-Z0-9._\s]', '', course.get('name', ''))
         if course.get('name') != None:
-            print(str(i) + ") " + courses_id_name_dict[course.get('id', "")]  + ': ' + str(course.get('id', "")))
-        i+=1
+            print(
+                f'{str(i)}) '
+                + courses_id_name_dict[course.get('id', "")]
+                + ': '
+                + str(course.get('id', ""))
+            )
+
     print("\nEnter the courses you would like to add to todoist by entering the numbers of the items you would like to select. Separate numbers with spaces")
     my_input = input(">")
     input_array = my_input.split()

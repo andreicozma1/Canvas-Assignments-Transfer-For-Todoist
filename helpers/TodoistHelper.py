@@ -48,7 +48,7 @@ class TodoistHelper:
         """
         Adds a new task from a Canvas assignment object to Todoist under the project corresponding to project_id
         """
-        logging.info(f"     NEW: Adding new Task for assignment")
+        logging.info("     NEW: Adding new Task for assignment")
         task_title = TodoistHelper.make_link_title(c_a["name"], c_a["html_url"])
         c_d = c_a['due_at']
         c_p = c_a['priority']
@@ -86,7 +86,7 @@ class TodoistHelper:
         :param title:
         :param url:
         """
-        return '[' + title + '](' + url + ')'
+        return f'[{title}]({url})'
 
     @staticmethod
     def get_priority_name(priority: int):

@@ -91,13 +91,13 @@ class CanvasToTodoist:
                     self.todoist_helper.create_task(c_a, t_proj_id)
                     summary['added'].append(c_a)
                 else:
-                    logging.info(f"     INFO: Already submitted, skipping...")
+                    logging.info("     INFO: Already submitted, skipping...")
                     summary['is-submitted'].append(c_a)
             elif not is_synced:
                 self.update_task(c_a, item)
                 summary['updated'].append(c_a)
             else:
-                logging.info(f"     OK: Task is already up to date!")
+                logging.info("     OK: Task is already up to date!")
                 summary['up-to-date'].append(c_a)
             logging.info(f"     Course: {c_cn}")
             logging.info(f"     Due Date: {c_d}")
@@ -108,7 +108,7 @@ class CanvasToTodoist:
 
         # Print out short summary
         logging.info("")
-        logging.info(f"# Short Summary:")
+        logging.info("# Short Summary:")
         logging.info(f"  * Added: {len(summary['added'])}")
         logging.info(f"  * Updated: {len(summary['updated'])}")
         logging.info(f"  * Already Submitted: {len(summary['is-submitted'])}")
@@ -125,14 +125,15 @@ class CanvasToTodoist:
 
         # Print detailed summary?
         logging.info("")
-        if not self.skip_confirmation_prompts:
-            answer = input("Q: Print Detailed Summary? (Y/n): ")
-        else:
-            answer = "y"
+        answer = (
+            "y"
+            if self.skip_confirmation_prompts
+            else input("Q: Print Detailed Summary? (Y/n): ")
+        )
 
         if answer.lower() == 'y':
             logging.info("")
-            logging.info(f"# Detailed Summary:")
+            logging.info("# Detailed Summary:")
             for cat in reversed(summary.keys()):
                 a_list = summary[cat]
                 logging.info(f"  * {cat.upper()}: {len(a_list)}")
@@ -140,9 +141,8 @@ class CanvasToTodoist:
                     c_n = c_a['name']
                     c_cn = self.selected_course_ids[str(c_a['course_id'])]['name']
                     a_p = c_a['priority']
-                    a_d = c_a['due_at']
                     d = None
-                    if a_d:
+                    if a_d := c_a['due_at']:
                         d = datetime.strptime(a_d, '%Y-%m-%dT%H:%M:%SZ')
                     # Convert to format: May 22, 2022 at 12:00 PM
                     d_nat = "Unknown" if d is None else d.strftime(
@@ -169,7 +169,7 @@ class CanvasToTodoist:
         # Print changes
         if t_p != c_p:
             updates_list.append('priority')
-        logging.info(f"     UPDATE: Updating Task: " + ", ".join(updates_list))
+        logging.info("     UPDATE: Updating Task: " + ", ".join(updates_list))
         # Update Todoist task
         t_task.update(due={
             'date': c_d,

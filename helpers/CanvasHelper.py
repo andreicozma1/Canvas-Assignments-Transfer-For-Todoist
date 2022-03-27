@@ -22,9 +22,7 @@ class CanvasHelper:
     def get_course_names(course_ids):
         logging.info("# Getting Course Names...")
 
-        course_names = []
-        for course_obj in course_ids.values():
-            course_names.append(course_obj['name'])
+        course_names = [course_obj['name'] for course_obj in course_ids.values()]
         logging.info("")
         return course_names
 
@@ -36,15 +34,19 @@ class CanvasHelper:
         logging.info("# Loading assignments from Canvas")
         assignments = []
         for course_id in course_ids:
-            response = requests.get(self.canvas_api_heading + '/api/v1/courses/' +
-                                    str(course_id) + '/assignments', headers=self.header,
-                                    params=param)
+            response = requests.get(
+                (
+                    (f'{self.canvas_api_heading}/api/v1/courses/' + str(course_id))
+                    + '/assignments'
+                ),
+                headers=self.header,
+                params=param,
+            )
+
             if response.status_code == 401:
                 logging.info('Unauthorized! Check Canvas API Key')
                 exit()
-            for assignment in response.json():
-                assignments.append(assignment)
-
+            assignments.extend(iter(response.json()))
         return assignments
 
     def download_course_files_all(self, course_ids, param):
@@ -112,11 +114,8 @@ class CanvasHelper:
                     c_name = c_obj
                     courses[c_id] = {'name': c_name}
                 logging.info(f'  {i + 1}. {c_name} [ID: {c_id}]')
-            if not skip_confirmation_prompts:
-                use_previous_input = input(
+            use_previous_input = "y" if skip_confirmation_prompts else input(
                     "Q: Would you like to use the courses selected last time? (Y/n) ")
-            else:
-                use_previous_input = "y"
             logging.info("")
             if use_previous_input.lower() == "y":
                 return courses
@@ -142,7 +141,7 @@ class CanvasHelper:
             logging.info(f" {i + 1}) {course_name_prev}")
 
             pick_title = f"{i + 1}) {course_name_prev}\n"
-            pick_title += f"    Select a match?"
+            pick_title += "    Select a match?"
 
             options = list(rename_list)
             options.append("+ Create new name")
@@ -167,9 +166,15 @@ class CanvasDownloadHelper():
     def download_course_files(self, course_id, save_path, param=None):
         if param is None:
             param = {}
-        response = requests.get(self.canvas_api_heading + '/api/v1/courses/' +
-                                str(course_id) + '/folders', headers=self.header,
-                                params=param)
+        response = requests.get(
+            (
+                (f'{self.canvas_api_heading}/api/v1/courses/' + str(course_id))
+                + '/folders'
+            ),
+            headers=self.header,
+            params=param,
+        )
+
         if response.status_code != 200:
             return False
 
@@ -207,9 +212,15 @@ class CanvasDownloadHelper():
     def download_module_files(self, course_id, save_path, param=None):
         if param is None:
             param = {}
-        response = requests.get(self.canvas_api_heading + '/api/v1/courses/' +
-                                str(course_id) + '/helpers', headers=self.header,
-                                params=param)
+        response = requests.get(
+            (
+                (f'{self.canvas_api_heading}/api/v1/courses/' + str(course_id))
+                + '/helpers'
+            ),
+            headers=self.header,
+            params=param,
+        )
+
         if response.status_code != 200:
             return False
 
@@ -267,7 +278,7 @@ class CanvasDownloadHelper():
             logging.info(f"      - File needs updating: Current Size = {existing_size} => New Size = {file_size}")
 
         if file_url == '':
-            logging.info(f"      - No URL found for file. Skipping...")
+            logging.info("      - No URL found for file. Skipping...")
             logging.info(f"      - Lock explanation: {file_obj['lock_explanation']}")
 
             with open(f'{file_path}-locked.json', 'w') as f:

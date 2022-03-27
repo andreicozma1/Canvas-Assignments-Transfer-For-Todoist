@@ -17,9 +17,7 @@ class ConfigHelper:
             self.create_config()
 
     def get(self, key):
-        if key in self.config:
-            return self.config[key]
-        return None
+        return self.config[key] if key in self.config else None
 
     def set(self, key, value):
         self.config[key] = value

@@ -18,11 +18,8 @@ canvas_token = keys[1].strip()
 
 courses_id_name_dict = load_courses(False)
 
-course_ids = []
-for course_id in keys[2:]:
-    course_ids.append(int(course_id.strip()))
-
-header = {"Authorization":"Bearer " + canvas_token}
+course_ids = [int(course_id.strip()) for course_id in keys[2:]]
+header = {"Authorization": f"Bearer {canvas_token}"}
 param = {'per_page': '100', 'include':'submission'}
 
 assignments = []
@@ -33,9 +30,15 @@ todoist_project_dict = {}
 # for those classes. Appends assignment objects to assignments list
 def load_assignments():
     for course_id in course_ids:
-        response = requests.get(canvas_api_heading + '/api/v1/courses/' +
-        str(course_id) + '/assignments', headers=header,
-        params=param)
+        response = requests.get(
+            (
+                (f'{canvas_api_heading}/api/v1/courses/' + str(course_id))
+                + '/assignments'
+            ),
+            headers=header,
+            params=param,
+        )
+
 
         for assignment in response.json():
             assignments.append(assignment)
@@ -76,19 +79,20 @@ def transfer_assignments_to_todoist():
 
         is_synced = False
         for task in todoist_tasks:
-            if task['content'] == (assignment_name + ' Due') and \
-            task['project_id'] == project_id:
+            if (
+                task['content'] == f'{assignment_name} Due'
+                and task['project_id'] == project_id
+            ):
                 print("Assignment already synced: " + assignment['name'])
                 is_synced = True
 
-        if not is_synced:
-            if assignment['submission']['submitted_at'] == None:
-                print("Adding assignment " + assignment['name'])
-                add_new_task(assignment, project_id)
-            else:
-                print("assignment already submitted " + assignment['name'])
-        else:
+        if is_synced:
             print("assignment already synced")
+        elif assignment['submission']['submitted_at'] is None:
+            print("Adding assignment " + assignment['name'])
+            add_new_task(assignment, project_id)
+        else:
+            print("assignment already submitted " + assignment['name'])
     todoist_api.commit()
 
 # Adds a new task from a Canvas assignment object to Todoist under the
