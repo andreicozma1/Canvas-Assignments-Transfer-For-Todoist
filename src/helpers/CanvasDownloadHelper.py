@@ -17,7 +17,7 @@ class CanvasDownloadHelper:
         self.header = {"Authorization": f"Bearer {api_key.strip()}"}
         p_info("# CanvasDownloadHelper: initialized")
         logging.info(f"  - Canvas API Heading: {self.canvas_api_heading}")
-        logging.info(f"  - Header: {self.header}")
+        logging.info(colored(f"  - Header: {self.header}", "grey"))
 
     def download_course_files(self, course_id, save_path, param=None):
         if param is None:

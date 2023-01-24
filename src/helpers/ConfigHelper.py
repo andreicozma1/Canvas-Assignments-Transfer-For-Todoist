@@ -81,6 +81,7 @@ class ConfigHelper:
                    "To add an API token, go to your Canvas settings and "
                    "click on New Access Token under Approved Integrations.\n"
                    "Copy the token and paste below when you are done.")
+            # TODO: Show notification
             if self.skip_confirmation_prompts:
                 p_error("You must configure your Canvas API key. Please run without -y argument to configure.")
                 sys.exit(1)
@@ -95,6 +96,7 @@ class ConfigHelper:
                        "To add an API token, go to your Todoist settings and "
                        "copy the API token listed under the Integrations Tab.\n"
                        "Copy the token and paste below when you are done.")
+                # TODO: Show notification
                 if self.skip_confirmation_prompts:
                     p_error("You must configure your Todoist API key. Please run without -y argument to configure.")
                     sys.exit(1)

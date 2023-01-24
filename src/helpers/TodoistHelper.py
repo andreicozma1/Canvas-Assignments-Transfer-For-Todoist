@@ -4,13 +4,13 @@ from datetime import datetime
 from todoist import TodoistAPI
 
 from src.Utils import p_info
-
+from termcolor import colored
 
 class TodoistHelper:
 
     def __init__(self, api_key):
         p_info("# TodoistHelper: Initialized")
-        logging.info("  - Todoist API Key: " + api_key)
+        logging.info(colored("  - Todoist API Key: " + api_key, "grey"))
         self.api = TodoistAPI(api_key.strip())
         self.sync(reset=True)
 

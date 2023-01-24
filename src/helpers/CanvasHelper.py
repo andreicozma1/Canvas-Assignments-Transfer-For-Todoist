@@ -18,7 +18,7 @@ class CanvasHelper:
         self.header = {"Authorization": f"Bearer {api_key.strip()}"}
         p_info("# CanvasHelper: Initialized")
         logging.info(f"  - Canvas API Heading: {self.canvas_api_heading}")
-        logging.info(f"  - Header: {self.header}")
+        logging.info(colored(f"  - Header: {self.header}", "grey"))
         self.download_helper = CanvasDownloadHelper(api_key, canvas_api_heading)
         self.courses_id_name_dict = {}
 
