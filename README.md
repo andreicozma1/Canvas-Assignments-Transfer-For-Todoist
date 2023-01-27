@@ -15,11 +15,30 @@ It also includes a module for syncing Canvas Assignments to your Todoist account
 
 **Run the main script**
 
-- Run the main script by calling ```python3 main.py```
+- Run the main script by calling `python3 main.py`
 
 **Options & Usage**
 
-- Run the main script with the `-h` flag to see all available options and their usage: ```python3 main.py -h```
+- Run the main script with the `-h` flag to see all available options and their usage: `python3 main.py -h`
+
+**Example Crontab**
+
+- Edit crontab
+```
+crontab -e
+```
+
+- Run every 60 minutes
+
+```
+@hourly /usr/bin/python3 /home/userid/Canvas-Sync/main.py -a -y
+```
+
+- Run on boot
+
+```
+@reboot /usr/bin/python3 /home/userid/Canvas-Sync/main.py -a -y
+```
 
 ## Disclaimer
 
