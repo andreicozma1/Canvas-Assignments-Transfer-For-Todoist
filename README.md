@@ -24,6 +24,7 @@ It also includes a module for syncing Canvas Assignments to your Todoist account
 **Example Crontab**
 
 - Edit crontab
+
 ```
 crontab -e
 ```
