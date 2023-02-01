@@ -43,7 +43,8 @@ crontab -e
 
 ## Disclaimer
 
-Modifications by Andrei Cozma which are based on the original code from the following repository:
+The original codebase has been tweaked and modified quite heavily over time. The following is the link to the original project:
 
 - <https://github.com/scottquach/Canvas-Assignments-Transfer-For-Todoist>
+
 
