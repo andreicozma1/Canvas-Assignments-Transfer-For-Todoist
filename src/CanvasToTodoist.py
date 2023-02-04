@@ -87,6 +87,8 @@ class CanvasToTodoist:
             # Check if the assignment already exists in Todoist and if it needs updating
             is_added, is_synced, item = self.check_existing_task(c_a, t_proj_id)
             logging.info(f"  {i + 1}. Assignment: \"{c_n}\"")
+            logging.info(f"     Project ID: {t_proj_id}")
+            
             # pprint(c_a)
             # Handle cases for adding and updating tasks on Todoist
             if not is_added:
