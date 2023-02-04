@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from pprint import pprint
 
 from termcolor import colored
 
@@ -86,15 +87,24 @@ class CanvasToTodoist:
             # Check if the assignment already exists in Todoist and if it needs updating
             is_added, is_synced, item = self.check_existing_task(c_a, t_proj_id)
             logging.info(f"  {i + 1}. Assignment: \"{c_n}\"")
-
+            # pprint(c_a)
             # Handle cases for adding and updating tasks on Todoist
             if not is_added:
-                if c_a['submission']['workflow_state'] == "unsubmitted":
+                should_add = True
+                try:
+                    if c_a['submission']['workflow_state'] == "submitted":
+                        should_add = False
+                        summary['is-submitted'].append(c_a)
+                except KeyError:
+                    logging.warning(f"     WARNING: Could not find submission state...")
+                    pass
+
+                if should_add:
                     self.todoist_helper.create_task(c_a, t_proj_id)
                     summary['added'].append(c_a)
                 else:
-                    logging.info(f"     INFO: Already submitted, skipping...")
-                    summary['is-submitted'].append(c_a)
+                    logging.info("     INFO: Skipping...")
+                    
             elif not is_synced:
                 self.update_task(c_a, item)
                 summary['updated'].append(c_a)
@@ -120,7 +130,7 @@ class CanvasToTodoist:
             logging.info("New tasks added or updated. Sending notification.")
             n_title = f"Canvas to Todoist (Total: {len(assignments)})"
             n_msg = f"Added {len(summary['added'])} & Updated {len(summary['updated'])}.\n" \
-                    f"Completed: {len(summary['is-submitted'])} & Up-to-Date {len(summary['up-to-date'])}."
+                        f"Completed: {len(summary['is-submitted'])} & Up-to-Date {len(summary['up-to-date'])}."
             NotificationHelper.send_notification(n_title, n_msg)
         else:
             logging.info("No new tasks added or updated. Skipping notification.")
