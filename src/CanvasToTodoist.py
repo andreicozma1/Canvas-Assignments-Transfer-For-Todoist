@@ -96,8 +96,7 @@ class CanvasToTodoist:
                         should_add = False
                         summary['is-submitted'].append(c_a)
                 except KeyError:
-                    logging.warning(f"     WARNING: Could not find submission state...")
-                    pass
+                    logging.warning("     WARNING: Could not find submission state...")
 
                 if should_add:
                     self.todoist_helper.create_task(c_a, t_proj_id)
