@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from todoist import TodoistAPI
+from todoist_api_python.api import TodoistAPI
 
 from src.Utils import p_info
 from termcolor import colored
@@ -10,7 +10,7 @@ class TodoistHelper:
 
     def __init__(self, api_key):
         p_info("# TodoistHelper: Initialized")
-        logging.info(colored("  - Todoist API Key: " + api_key, "grey"))
+        logging.info(colored(f"  - Todoist API Key: {api_key}", "grey"))
         self.api = TodoistAPI(api_key.strip())
         self.sync(reset=True)
 
@@ -50,7 +50,7 @@ class TodoistHelper:
         """
         Adds a new task from a Canvas assignment object to Todoist under the project corresponding to project_id
         """
-        logging.info(f"     NEW: Adding new Task for assignment")
+        logging.info("     NEW: Adding new Task for assignment")
         task_title = TodoistHelper.make_link_title(c_a["name"], c_a["html_url"])
         c_d = c_a['due_at']
         c_p = c_a['priority']
@@ -71,9 +71,16 @@ class TodoistHelper:
             logging.info(f" - INFO: Project already exists: \"{proj_name}\"")
             return False
 
-        self.api.projects.add(proj_name)
-        self.api.commit(raise_on_error=True)
-        self.sync()
+        try:
+            project = self.api.add_project(name=proj_name)
+        except Exception as error:
+            logging.error(f" - ERROR: Could not create project \"{proj_name}\"")
+            logging.error(error)
+            return False
+    
+        # self.api.projects.add(proj_name)
+        # self.api.commit(raise_on_error=True)
+        # self.sync()
         logging.info(f" - OK: Created Project: \"{proj_name}\"")
         return True
 
@@ -84,7 +91,7 @@ class TodoistHelper:
         :param title:
         :param url:
         """
-        return '[' + title + '](' + url + ')'
+        return f'[{title}]({url})'
 
     @staticmethod
     def get_priority_name(priority: int):
