@@ -48,6 +48,8 @@ class CanvasDownloadHelper:
             )
 
             reason_clean = folder_files_response.reason.replace(" ", "-")
+            reason_clean = f".canvas-sync-{reason_clean}"
+
             with open(os.path.join(folder_path, f"{reason_clean}.json"), "w") as f:
                 json.dump(folder_files_response.json(), f, indent=4)
 
