@@ -6,13 +6,15 @@ from canvasapi import Canvas
 from pick import pick
 from termcolor import colored
 
-from src.Utils import normalize_file_name, p_info
 from src.helpers.CanvasDownloadHelper import CanvasDownloadHelper
-from src.helpers.NotificationHelper import NotificationHelper
+from src.Utils import normalize_file_name, p_info
+from src.helpers.LogHelper import notify
 
 
 class CanvasHelper:
-    def __init__(self, api_key, canvas_api_heading: str = "https://canvas.instructure.com"):
+    def __init__(
+        self, api_key, canvas_api_heading: str = "https://canvas.instructure.com"
+    ):
         self.api_key = api_key
         self.canvas_api_heading = canvas_api_heading
         self.header = {"Authorization": f"Bearer {api_key.strip()}"}
@@ -41,8 +43,11 @@ class CanvasHelper:
         logging.info("# Loading assignments from Canvas")
         assignments = []
         for course_id in course_ids:
-            response = requests.get(f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/assignments",
-                                    headers=self.header, params=param)
+            response = requests.get(
+                f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/assignments",
+                headers=self.header,
+                params=param,
+            )
 
             if response.status_code == 401:
                 logging.info("Unauthorized! Check Canvas API Key")
@@ -51,31 +56,46 @@ class CanvasHelper:
         return assignments
 
     def download_course_files_all(self, course_ids, param):
-        logging.info(colored("# Downloading Folders & Files", attrs=["bold", "reverse"]))
+        logging.info(
+            colored("# Downloading Folders & Files", attrs=["bold", "reverse"])
+        )
         for course_id, c_obj in course_ids.items():
             c_name = c_obj["name"]
             logging.info(colored(f"# Course: {c_name} - Files", attrs=["bold"]))
             save_path = c_obj["save_path"]
-            num_files = self.download_helper.download_course_files(course_id, save_path, param)
+            num_files = self.download_helper.download_course_files(
+                course_id, save_path, param
+            )
             logging.info(f" => Course: {c_name} - Files - Downloaded {num_files} files")
             if num_files > 0:
-                NotificationHelper.send_notification(f"{c_name} - Files", f"Downloaded {num_files} files")
+                notify(f"{c_name} - Files", f"Downloaded {num_files} files")
             logging.info("")
 
     def download_module_files_all(self, course_ids, param):
-        logging.info(colored("# Downloading Any Additional Files in Modules", attrs=["bold", "reverse"]))
+        logging.info(
+            colored(
+                "# Downloading Any Additional Files in Modules",
+                attrs=["bold", "reverse"],
+            )
+        )
 
         for course_id, c_obj in course_ids.items():
             c_name = c_obj["name"]
             logging.info(colored(f"# Course: {c_name} - Modules", attrs=["bold"]))
             save_path = c_obj["save_path"]
-            num_files = self.download_helper.download_module_files(course_id, save_path, param)
-            logging.info(f" => Course: {c_name} - Modules - Downloaded {num_files} files")
+            num_files = self.download_helper.download_module_files(
+                course_id, save_path, param
+            )
+            logging.info(
+                f" => Course: {c_name} - Modules - Downloaded {num_files} files"
+            )
             if num_files > 0:
-                NotificationHelper.send_notification(f"{c_name} - Modules", f"Downloaded {num_files} files")
+                notify(f"{c_name} - Modules", f"Downloaded {num_files} files")
             logging.info("")
 
-    def select_courses(self, config_helper, rename_list=None, skip_confirmation_prompts=False):
+    def select_courses(
+        self, config_helper, rename_list=None, skip_confirmation_prompts=False
+    ):
         """
         Allows the user to select the courses that they want to transfer while generating a dictionary
         that has course ids as the keys and their names as the values
@@ -89,7 +109,9 @@ class CanvasHelper:
         i = 1
         for c in courses_pag:
             try:
-                self.courses_id_name_dict[c.id] = f"{c.course_code.replace(' ', '')} - {c.name}"
+                self.courses_id_name_dict[
+                    c.id
+                ] = f"{c.course_code.replace(' ', '')} - {c.name}"
                 i += 1
             except AttributeError:
                 logging.info("  - Skipping invalid course entry.")
@@ -106,8 +128,13 @@ class CanvasHelper:
                     c_name = c_obj
                     courses[c_id] = {"name": c_name}
                 logging.info(f"  {i + 1}. {c_name}")
-            use_previous_input = "y" if skip_confirmation_prompts else input(
-                    "Q: Would you like to use the courses selected last time? (Y/n) ")
+            use_previous_input = (
+                "y"
+                if skip_confirmation_prompts
+                else input(
+                    "Q: Would you like to use the courses selected last time? (Y/n) "
+                )
+            )
 
             logging.info("")
             if use_previous_input.lower() == "y":
@@ -115,7 +142,9 @@ class CanvasHelper:
 
         title = "Select the course(s) you would like to use (press SPACE to mark, ENTER to continue):"
 
-        sorted_ids, sorted_courses = zip(*sorted(self.courses_id_name_dict.items(), key=itemgetter(0)))
+        sorted_ids, sorted_courses = zip(
+            *sorted(self.courses_id_name_dict.items(), key=itemgetter(0))
+        )
 
         selected = pick(sorted_courses, title, multiselect=True, min_selection_count=1)
 
@@ -134,7 +163,12 @@ class CanvasHelper:
 
             options = list(rename_list)
             options.extend(
-                    (course_name_prev, normalize_file_name(course_name_prev, has_extension=False), "+ Create new name"))
+                (
+                    course_name_prev,
+                    normalize_file_name(course_name_prev, has_extension=False),
+                    "+ Create new name",
+                )
+            )
             course_name_new, indices = pick(options, pick_title)
 
             if course_name_new == "+ Create new name":

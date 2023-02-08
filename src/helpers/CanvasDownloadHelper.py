@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import traceback
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,8 +23,11 @@ class CanvasDownloadHelper:
     def download_course_files(self, course_id, save_path, param=None):
         if param is None:
             param = {}
-        response = requests.get(f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/folders",
-                                headers=self.header, params=param)
+        response = requests.get(
+            f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/folders",
+            headers=self.header,
+            params=param,
+        )
 
         if response.status_code != 200:
             logging.info(colored(f"  - Error: {response.status_code}", "red"))
@@ -39,24 +43,35 @@ class CanvasDownloadHelper:
             os.makedirs(folder_path, exist_ok=True)
 
             folder_files_url = folder["files_url"]
-            folder_files_response = requests.get(folder_files_url, headers=self.header, params=param)
+            folder_files_response = requests.get(
+                folder_files_url, headers=self.header, params=param
+            )
 
             reason_clean = folder_files_response.reason.replace(" ", "-")
             with open(os.path.join(folder_path, f"{reason_clean}.json"), "w") as f:
                 json.dump(folder_files_response.json(), f, indent=4)
 
             if folder_files_response.status_code != 200:
-                logging.info(colored(f"  * Folder: `{folder_name}` => "
-                                     f"{folder_files_response.status_code} - {folder_files_response.reason}", "red", ))
+                logging.info(
+                    colored(
+                        f"  * Folder: `{folder_name}` => "
+                        f"{folder_files_response.status_code} - {folder_files_response.reason}",
+                        "red",
+                    )
+                )
                 continue
 
             folders_count = folder["folders_count"]
             files_count = folder["files_count"]
-            logging.info(f" * Folder `{folder_name}` (Folders: {folders_count}, Files: {files_count})")
+            logging.info(
+                f" * Folder `{folder_name}` (Folders: {folders_count}, Files: {files_count})"
+            )
 
             for file in folder_files_response.json():
                 try:
-                    if self.download_file_handler(file["display_name"], file["url"], file, folder_path):
+                    if self.download_file_handler(
+                        file["display_name"], file["url"], file, folder_path
+                    ):
                         num_files += 1
                 except Exception as e:
                     logging.info(colored(f"  - Error: {e}", "red"))
@@ -70,8 +85,11 @@ class CanvasDownloadHelper:
         if param is None:
             param = {}
 
-        response = requests.get(f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/modules",
-                                headers=self.header, params=param)
+        response = requests.get(
+            f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/modules",
+            headers=self.header,
+            params=param,
+        )
 
         if response.status_code != 200:
             logging.info(colored(f"  - Error: {response.status_code}", "red"))
@@ -87,7 +105,9 @@ class CanvasDownloadHelper:
 
             logging.info(f" * Module: `{module_name}`")
             items_url = module["items_url"]
-            items_url_response = requests.get(items_url, headers=self.header, params=param)
+            items_url_response = requests.get(
+                items_url, headers=self.header, params=param
+            )
 
             for item in items_url_response.json():
                 file_type = item["type"]
@@ -111,10 +131,25 @@ class CanvasDownloadHelper:
                     if file_type.lower() == "file":
                         file_name = html_url_response_json["display_name"]
                         file_url = html_url_response_json["url"]
-                        if self.download_file_handler(file_name, file_url, html_url_response_json, folder_path,
-                                                      module_name.lower(), ):
+                        if self.download_file_handler(
+                            file_name,
+                            file_url,
+                            html_url_response_json,
+                            folder_path,
+                            module_name.lower(),
+                        ):
                             num_files += 1
                         continue
+
+                    if file_type.lower() == "externaltool":
+                        file_name = html_url_response_json["name"]
+                        body = json.dumps(item, indent=4)
+                        with open(
+                            os.path.join(folder_path, f"{file_name}.json"), "w"
+                        ) as f:
+                            f.write(body)
+                        continue
+
                     if file_type.lower() == "page":
                         file_name = html_url_response_json["title"]
                         body = html_url_response_json["body"]
@@ -127,6 +162,7 @@ class CanvasDownloadHelper:
                     elif file_type.lower() == "discussion":
                         file_name = html_url_response_json["title"]
                         body = html_url_response_json["message"]
+
                     else:
                         raise Exception(f"Unknown file type: {file_type}")
 
@@ -134,13 +170,16 @@ class CanvasDownloadHelper:
                         num_files += 1
                 except Exception as e:
                     logging.info(colored(f"    - {file_type} - Error: {e}", "red"))
+                    traceback.print_exc()
                     logging.info(json.dumps(item, indent=4))
                     logging.info(json.dumps(html_url_response_json, indent=4))
                     continue
 
         return num_files
 
-    def download_file_handler(self, file_name, file_url, file_obj, folder_path, subfolder_name=None):
+    def download_file_handler(
+        self, file_name, file_url, file_obj, folder_path, subfolder_name=None
+    ):
         os.makedirs(folder_path, exist_ok=True)
         file_name = normalize_file_name(file_name)
         file_path = os.path.join(folder_path, file_name)
@@ -151,29 +190,47 @@ class CanvasDownloadHelper:
 
             # Download the file to folder
             if not os.path.isfile(file_path) and subfolder_name is not None:
-                return self.download_file_handler(file_name, file_url, file_obj,
-                                                  os.path.join(folder_path, subfolder_name), )
+                return self.download_file_handler(
+                    file_name,
+                    file_url,
+                    file_obj,
+                    os.path.join(folder_path, subfolder_name),
+                )
 
             if os.path.isfile(file_path):
                 # Get size in bytes of filepath
                 existing_size = os.path.getsize(file_path)
                 if existing_size == file_size:
                     logging.info(
-                            colored(f"    - Skipping `{file_name}` (size: {file_size} bytes, existing_size: {existing_size} bytes)",
-                                    "yellow"))
+                        colored(
+                            f"    - Skipping `{file_name}` (size: {file_size} bytes, existing_size: {existing_size} bytes)",
+                            "yellow",
+                        )
+                    )
                     return False
                 logging.info(
-                        colored(f"    - Updating `{file_name}` (current size: {existing_size} bytes, new size: {file_size} bytes)",
-                                "green"))
+                    colored(
+                        f"    - Updating `{file_name}` (current size: {existing_size} bytes, new size: {file_size} bytes)",
+                        "green",
+                    )
+                )
             else:
                 logging.info(
-                    colored(f"    - Downloading `{file_name}` (size: {file_size} bytes, {file_size_mb} MB)", "green"))
+                    colored(
+                        f"    - Downloading `{file_name}` (size: {file_size} bytes, {file_size_mb} MB)",
+                        "green",
+                    )
+                )
         else:
             logging.info(colored(f"    - Downloading `{file_name}`", "green"))
 
         if file_url == "" and "lock_explanation" in file_obj:
             logging.info(colored("      - No URL found for file. Skipping...", "red"))
-            logging.info(colored(f"      - Lock explanation: {file_obj['lock_explanation']}", "red"))
+            logging.info(
+                colored(
+                    f"      - Lock explanation: {file_obj['lock_explanation']}", "red"
+                )
+            )
 
             with open(f"{file_path}-locked.json", "w") as f:
                 json.dump(file_obj, f, indent=4)
@@ -214,28 +271,57 @@ class CanvasDownloadHelper:
                     # save to res folder
                     img_path = os.path.join(folder_img, img_name)
                     if not os.path.isfile(img_path):
-                        logging.info(colored(f"       - Downloading image {i + 1}/{len_all_imgs}: {img_url}", "green"))
+                        logging.info(
+                            colored(
+                                f"       - Downloading image {i + 1}/{len_all_imgs}: {img_url}",
+                                "green",
+                            )
+                        )
                         r = requests.get(img_url, stream=True, headers=self.header)
                         with open(img_path, "wb") as f:
                             for chunk in r.iter_content(chunk_size=1024):
                                 if chunk:
                                     f.write(chunk)
                     else:
-                        logging.info(colored(f"       - Skipping image {i + 1}/{len_all_imgs}: {img_url}", "yellow"))
+                        logging.info(
+                            colored(
+                                f"       - Skipping image {i + 1}/{len_all_imgs}: {img_url}",
+                                "yellow",
+                            )
+                        )
+                    # read the file back in, get the actual hash of the content, and move it to the correct name
+                    # with open(img_path, "rb") as f:
+                    #     img_name = hashlib.md5(f.read()).hexdigest()
+                    # os.rename(img_path, os.path.join(folder_img, img_name))
                     img.attrs["src"] = f"./img/{img_name}"
 
         if os.path.isfile(file_path):
-            existing_size = os.path.getsize(file_path)
-            curr_size = len(soup.prettify().encode('utf-8'))
-            if existing_size == curr_size:
-                logging.info(colored(
-                    f"       => Skipping `{file_name}` (size: {curr_size} bytes, existing_size: {existing_size} bytes)",
-                    "yellow"))
+            # existing_size = os.path.getsize(file_path)
+            # read the existing file
+            with open(file_path, "r") as f:
+                existing_soup = BeautifulSoup(f.read(), "html.parser")
+            existing_hash = hashlib.md5(
+                existing_soup.prettify().encode("utf-8")
+            ).hexdigest()
+
+            curr_hash = hashlib.md5(soup.prettify().encode("utf-8")).hexdigest()
+
+            # curr_size = len(soup.prettify())
+            if existing_hash == curr_hash:
+                logging.info(
+                    colored(
+                        f"       => Skipping `{file_name}` (hash: {existing_hash} bytes, existing hash: {curr_hash} bytes)",
+                        "yellow",
+                    )
+                )
                 return False
             else:
-                logging.info(colored(
-                    f"       => Updating `{file_name}` (current size: {existing_size} bytes, new size: {curr_size} bytes)",
-                    "green"))
+                logging.info(
+                    colored(
+                        f"       => Updating `{file_name}` (existing hash: {existing_hash} bytes, new hash: {curr_hash} bytes)",
+                        "green",
+                    )
+                )
         else:
             logging.info(colored(f"       => Downloading `{file_name}`", "green"))
 

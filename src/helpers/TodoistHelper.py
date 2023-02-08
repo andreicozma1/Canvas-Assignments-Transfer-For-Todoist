@@ -1,60 +1,75 @@
 import logging
 from datetime import datetime
 
+from termcolor import colored
 from todoist_api_python.api import TodoistAPI
 
+from src.helpers.LogHelper import log_i, log_w
 from src.Utils import p_info
-from termcolor import colored
+
 
 class TodoistHelper:
-
     def __init__(self, api_key):
         p_info("# TodoistHelper: Initialized")
         logging.info(colored(f"  - Todoist API Key: {api_key}", "grey"))
         self.api = TodoistAPI(api_key.strip())
-        self.sync(reset=True)
+        self.tasks = self.api.get_tasks()
+        self.projects = self.api.get_projects()
 
-    def sync(self, reset=False):
-        if reset:
-            self.api.reset_state()
-        self.api.sync()
-        p_names_to_id_key = 'projects_by_name'
-        p_names_key = 'project_names'
-
-        self.api.state[p_names_to_id_key] = {}
-        self.api.state[p_names_key] = []
-        for project in self.api.state['projects']:
-            name = project['name']
-            self.api.state[p_names_to_id_key][project['name']] = project['id']
-            self.api.state[p_names_key].append(name)
-
-    def get_tasks(self) -> list:
+    def find_task(self, project_id, title):
         """
-        Loads all user tasks from Todoist
+        Finds a task with the given title in the given project
         """
-        return self.api.state['items']
+        tasks = []
+        for task in self.tasks:
+            if task.project_id == project_id and task.content == title:
+                tasks.append(task)
+        if len(tasks) == 0:
+            log_i(
+                f'Could not find task "{title}" in project "{project_id}"',
+            )
+            return None
+        if len(tasks) > 1:
+            log_w(
+                f"Found multiple tasks with the name {title}",
+                show_notify=True,
+            )
+            # delete all but the first task
+            # for task in tasks[1:]:
+            #     self.api.delete_task(task.id)
+        return tasks[0]
 
     def get_project_names(self) -> list:
         """
         Loads all user projects from Todoist
         """
-        return self.api.state['project_names']
+        project_names = []
+        for project in self.projects:
+            project_names.append(project.name)
+        return project_names
 
     def get_project_id(self, project_name):
         """
         Returns the project id corresponding to project_name
         """
-        return self.api.state['projects_by_name'][project_name]
+        project_ids = []
+        for project in self.projects:
+            if project.name == project_name:
+                project_ids.append(project.id)
 
-    def create_task(self, c_a, t_proj_id):
-        """
-        Adds a new task from a Canvas assignment object to Todoist under the project corresponding to project_id
-        """
-        logging.info("     NEW: Adding new Task for assignment")
-        task_title = TodoistHelper.make_link_title(c_a["name"], c_a["html_url"])
-        c_d = c_a['due_at']
-        c_p = c_a['priority']
-        self.api.add_item(task_title, project_id=t_proj_id, date_string=c_d, priority=c_p)
+        if len(project_ids) == 0:
+            log_i(
+                f'Could not find project "{project_name}"',
+            )
+            return None
+
+        if len(project_ids) > 1:
+            log_w(
+                f"Found multiple projects with the name {project_name}",
+                show_notify=True,
+            )
+
+        return project_ids[0]
 
     def create_projects(self, proj_names_list: list):
         """
@@ -64,24 +79,16 @@ class TodoistHelper:
         logging.info("# Creating Todoist projects:")
         for i, course_name in enumerate(proj_names_list):
             if not self.create_project(course_name):
-                logging.info(f"  {i + 1}. INFO: \"{course_name}\" already exists; skipping...")
+                logging.info(
+                    f'  {i + 1}. INFO: "{course_name}" already exists; skipping...'
+                )
 
     def create_project(self, proj_name):
-        if proj_name in self.api.state['project_names']:
-            logging.info(f" - INFO: Project already exists: \"{proj_name}\"")
+        if proj_name in self.get_project_names():
             return False
 
-        try:
-            project = self.api.add_project(name=proj_name)
-        except Exception as error:
-            logging.error(f" - ERROR: Could not create project \"{proj_name}\"")
-            logging.error(error)
-            return False
-    
-        # self.api.projects.add(proj_name)
-        # self.api.commit(raise_on_error=True)
-        # self.sync()
-        logging.info(f" - OK: Created Project: \"{proj_name}\"")
+        self.api.add_project(name=proj_name)
+        logging.info(f' - OK: Created Project: "{proj_name}"')
         return True
 
     @staticmethod
@@ -91,7 +98,7 @@ class TodoistHelper:
         :param title:
         :param url:
         """
-        return f'[{title}]({url})'
+        return f"[{title}]({url})"
 
     @staticmethod
     def get_priority_name(priority: int):
@@ -102,25 +109,28 @@ class TodoistHelper:
         return priorities[priority]
 
     @staticmethod
-    def find_priority(assignment) -> int:
+    def find_priority(assignment_name, assignment_due_at) -> int:
         """
         Finds the priority level of an assignment
         Task priority from 1 (normal, default value) to 4 (urgent).
         1: Normal, 2: Medium, 3: High, 4: Urgent
         """
-        assignment_name = assignment['name']
-        assignment_due_at = assignment['due_at']
         priority = 1
 
-        keywords = {4: ['exam', 'test', 'midterm', 'final'], 3: ['project', 'paper', 'quiz', 'homework', 'discussion'],
-                    2: ['reading', 'assignment']}
+        keywords = {
+            4: ["exam", "test", "midterm", "final"],
+            3: ["project", "paper", "quiz", "homework", "discussion"],
+            2: ["reading", "assignment"],
+        }
 
         for p, keywords in keywords.items():
-            if p > priority and any(keyword in assignment_name.lower() for keyword in keywords):
+            if p > priority and any(
+                keyword in assignment_name.lower() for keyword in keywords
+            ):
                 priority = p
 
         if assignment_due_at is not None:
-            due_at = datetime.strptime(assignment_due_at, '%Y-%m-%dT%H:%M:%SZ')
+            due_at = datetime.strptime(assignment_due_at, "%Y-%m-%dT%H:%M:%SZ")
 
             # If there are less than 3 days left on the assignment, set priority to 4
             if (due_at - datetime.now()).days < 3:

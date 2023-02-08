@@ -6,24 +6,28 @@ from termcolor import colored
 
 from src.helpers.CanvasHelper import CanvasHelper
 from src.helpers.ConfigHelper import ConfigHelper
-from src.helpers.NotificationHelper import NotificationHelper
+from src.helpers.LogHelper import notify
 from src.helpers.TodoistHelper import TodoistHelper
 
 
 class CanvasToTodoist:
-
     def __init__(self, args, config_path, skip_confirmation_prompts=False):
-        logging.info(colored("Starting CanvasToTodoistr", attrs=['bold', 'reverse']))
+        logging.info(colored("Starting CanvasToTodoistr", attrs=["bold", "reverse"]))
         self.skip_confirmation_prompts = skip_confirmation_prompts
-        self.param = {'per_page': '100', 'include': 'submission'}
+        self.param = {"per_page": "100", "include": "submission"}
         self.input_prompt = "> "
         self.selected_course_ids = None
 
         # Loaded configuration files
-        self.config_helper = ConfigHelper(args, config_path, self.input_prompt, self.skip_confirmation_prompts)
+        self.config_helper = ConfigHelper(
+            args, config_path, self.input_prompt, self.skip_confirmation_prompts
+        )
 
-        self.canvas_helper = CanvasHelper(self.config_helper.get('canvas_api_key'))
-        self.todoist_helper = TodoistHelper(self.config_helper.get('todoist_api_key'))
+        self.canvas_helper = CanvasHelper(
+            self.config_helper.get("canvas_api_key"),
+            canvas_api_heading=str(self.config_helper.get("canvas_api_heading")),
+        )
+        self.todoist_helper = TodoistHelper(self.config_helper.get("todoist_api_key"))
 
     def run(self):
         logging.info("###################################################")
@@ -31,38 +35,54 @@ class CanvasToTodoist:
         logging.info("###################################################")
 
         todoist_project_names = self.todoist_helper.get_project_names()
-        self.selected_course_ids = self.canvas_helper.select_courses(self.config_helper, todoist_project_names,
-                                                                     self.skip_confirmation_prompts)
+        self.selected_course_ids = self.canvas_helper.select_courses(
+            self.config_helper, todoist_project_names, self.skip_confirmation_prompts
+        )
         logging.info(self.selected_course_ids)
         course_names = self.canvas_helper.get_course_names(self.selected_course_ids)
 
         self.todoist_helper.create_projects(course_names)
 
-        assignments = self.canvas_helper.get_assignments(self.selected_course_ids, self.param)
+        assignments = self.canvas_helper.get_assignments(
+            self.selected_course_ids, self.param
+        )
         self.transfer_assignments_to_todoist(assignments)
         logging.info("# Finished!")
 
-    def check_existing_task(self, assignment, project_id):
-        """
-        Checks to see if a task already exists for the assignment.
-        Return flags for whether the task exists and if it needs to be updated,
-        as well as the corresponding task object.
-        """
-        is_added = False
-        is_synced = True
-        item = None
-        for task in self.todoist_helper.get_tasks():
-            task_title = TodoistHelper.make_link_title(assignment["name"], assignment["html_url"])
-            # If title and project match, then the task already exists
-            if task['content'] == task_title and task['project_id'] == project_id:
-                is_added = True
-                # Check if the task is synced by comparing due dates and priority
-                if (task['due'] and task['due']['date'] != assignment['due_at']) or task['priority'] != assignment[
-                    'priority']:
-                    is_synced = False
-                    item = task
-                    break
-        return is_added, is_synced, item
+    # def check_existing_task(self, assignment, project_id):
+    #     """
+    #     Checks to see if a task already exists for the assignment.
+    #     Return flags for whether the task exists and if it needs to be updated,
+    #     as well as the corresponding task object.
+    #     """
+    #     is_added = False
+    #     is_synced = True
+    #     item = None
+    #     for task in self.todoist_helper.tasks:
+    #         # If title and project match, then the task already exists
+    #         if task.project_id == project_id:
+    #             task_title = TodoistHelper.make_link_title(
+    #                 assignment["name"], assignment["html_url"]
+    #             )
+    #             if task.content == task_title:
+    #                 is_added = True
+    #                 # Check if the task is synced by comparing due dates and priority
+    #                 if (
+    #                     task.due and task.due.date != assignment["due_at"]
+    #                 ) or task.priority != assignment["priority"]:
+    #                     is_synced = False
+    #                     item = task
+    #                     break
+    #     return is_added, is_synced, item
+
+    def get_course_by_id(self, course_id: str):
+        if course_id in self.selected_course_ids:
+            return self.selected_course_ids[course_id]
+        # otherwise if any of the ids end with the course id, return that
+        for key, value in self.selected_course_ids.items():
+            if key.endswith(str(course_id)):
+                return value
+        return None
 
     def transfer_assignments_to_todoist(self, assignments):
         """
@@ -71,53 +91,97 @@ class CanvasToTodoist:
         """
         logging.info("# Transferring assignments to Todoist...")
 
-        summary = {'added': [], 'updated': [], 'is-submitted': [], 'up-to-date': []}
+        summary = {"added": [], "updated": [], "is-submitted": [], "up-to-date": []}
 
-        for i, c_a in enumerate(assignments):
+        for i, canvas_assignment in enumerate(assignments):
             # Get the canvas assignment name, due date, course name, todoist project id
-            c_n = c_a['name']
-            c_d = c_a['due_at']
-            c_cn = self.selected_course_ids[str(c_a['course_id'])]['name']
-            t_proj_id = self.todoist_helper.get_project_id(c_cn)
+            course_id = str(canvas_assignment["course_id"])
+            name = canvas_assignment["name"]
+            due_at = canvas_assignment["due_at"]
 
-            # Find the corresponding priority based on the assignment properties
-            priority = TodoistHelper.find_priority(c_a)
-            c_a['priority'] = priority
+            submitted = (
+                "submission" in canvas_assignment
+                and canvas_assignment["submission"]["workflow_state"] != "unsubmitted"
+            )
+
+            canvas_course_name = self.get_course_by_id(course_id)["name"]
+            todoist_proj_id = self.todoist_helper.get_project_id(canvas_course_name)
+
+            logging.info(f'  {i + 1}. Assignment: "{name}"')
 
             # Check if the assignment already exists in Todoist and if it needs updating
-            is_added, is_synced, item = self.check_existing_task(c_a, t_proj_id)
-            logging.info(f"  {i + 1}. Assignment: \"{c_n}\"")
-            logging.info(f"     Project ID: {t_proj_id}")
-            
-            # pprint(c_a)
+            # is_added, is_synced, task = self.check_existing_task(c_a, t_proj_id)
+            task_title = TodoistHelper.make_link_title(
+                canvas_assignment["name"], canvas_assignment["html_url"]
+            )
+            task_description = canvas_assignment["description"]
+            task_priority = TodoistHelper.find_priority(name, due_at)
+            assignments[i]["priority"] = task_priority
+
+            logging.info(f"     Course: {canvas_course_name} (id: {course_id})")
+            logging.info(f"     Due Date: {due_at}")
+            logging.info(
+                f"     Priority: {TodoistHelper.get_priority_name(task_priority)}"
+            )
+            logging.info(f"     Todoist Project ID: {todoist_proj_id}")
+
+            task = self.todoist_helper.find_task(todoist_proj_id, task_title)
+
             # Handle cases for adding and updating tasks on Todoist
-            if not is_added:
-                should_add = True
-                try:
-                    if c_a['submission']['workflow_state'] == "submitted":
-                        should_add = False
-                        summary['is-submitted'].append(c_a)
-                except KeyError:
-                    logging.warning("     WARNING: Could not find submission state...")
+            if task is None:
+                if submitted:
+                    summary["is-submitted"].append(canvas_assignment)
+                    logging.info(
+                        "     INFO: Assignment submitted. Skipping Todoist task."
+                    )
+                    continue
+                task = self.todoist_helper.api.add_task(
+                    content=task_title,
+                    description=task_description,
+                    project_id=todoist_proj_id,
+                    priority=task_priority,
+                    due_string=due_at,
+                )
+                summary["added"].append(canvas_assignment)
 
-                if should_add:
-                    self.todoist_helper.create_task(c_a, t_proj_id)
-                    summary['added'].append(c_a)
+            if task is not None:
+                if submitted:
+                    summary["is-submitted"].append(canvas_assignment)
+                    logging.info(
+                        "     INFO: Assignment submitted. Closing Todoist task."
+                    )
+                    self.todoist_helper.api.close_task(task_id=task.id)
+                    continue
+                updates_list = []
+                if (task.due.string if task.due else None) != due_at:
+                    logging.info(
+                        f"     UPDATE: due date: {task.due.string if task.due else None} -> {due_at}"
+                    )
+                    updates_list.append("due date")
+                if task.priority != task_priority:
+                    updates_list.append("priority")
+                    p1 = TodoistHelper.get_priority_name(task.priority)
+                    p2 = TodoistHelper.get_priority_name(task_priority)
+                    logging.info(f"     UPDATE: priority: {p1} -> {p2}")
+                if task_description and task.description != task_description:
+                    updates_list.append("description")
+                    logging.info(
+                        f"     UPDATE: description: {task.description} -> {task_description}"
+                    )
+
+                if len(updates_list) > 0:
+                    self.todoist_helper.api.update_task(
+                        task_id=task.id,
+                        content=task_title,
+                        description=task_description,
+                        project_id=todoist_proj_id,
+                        priority=task_priority,
+                        due_string=due_at,
+                    )
+                    summary["updated"].append(canvas_assignment)
                 else:
-                    logging.info("     INFO: Skipping...")
-                    
-            elif not is_synced:
-                self.update_task(c_a, item)
-                summary['updated'].append(c_a)
-            else:
-                logging.info(f"     OK: Task is already up to date!")
-                summary['up-to-date'].append(c_a)
-            logging.info(f"     Course: {c_cn}")
-            logging.info(f"     Due Date: {c_d}")
-            logging.info(f"     Priority: {TodoistHelper.get_priority_name(priority)}")
-
-        # Commit changes to Todoist
-        self.todoist_helper.api.commit(raise_on_error=True)
+                    logging.info(f"     OK: Task is already up to date!")
+                    summary["up-to-date"].append(canvas_assignment)
 
         # Print out short summary
         logging.info("")
@@ -127,60 +191,47 @@ class CanvasToTodoist:
         logging.info(f"  * Already Submitted: {len(summary['is-submitted'])}")
         logging.info(f"  * Up to Date: {len(summary['up-to-date'])}")
 
-        if len(summary['added']) > 0 or len(summary['updated']) > 0:
+        if len(summary["added"]) > 0 or len(summary["updated"]) > 0:
             logging.info("New tasks added or updated. Sending notification.")
             n_title = f"Canvas to Todoist (Total: {len(assignments)})"
-            n_msg = f"Added {len(summary['added'])} & Updated {len(summary['updated'])}.\n" \
-                        f"Completed: {len(summary['is-submitted'])} & Up-to-Date {len(summary['up-to-date'])}."
-            NotificationHelper.send_notification(n_title, n_msg)
+            n_msg = (
+                f"Added {len(summary['added'])} & Updated {len(summary['updated'])}.\n"
+                f"Completed: {len(summary['is-submitted'])} & Up-to-Date {len(summary['up-to-date'])}."
+            )
+            notify(n_title, n_msg)
         else:
             logging.info("No new tasks added or updated. Skipping notification.")
 
         # Print detailed summary?
-        logging.info("")
-        if not self.skip_confirmation_prompts:
-            answer = input("Q: Print Detailed Summary? (Y/n): ")
-        else:
-            answer = "y"
+        # logging.info("")
+        # if not self.skip_confirmation_prompts:
+        #     answer = input("Q: Print Detailed Summary? (Y/n): ")
+        # else:
+        #     answer = "y"
 
-        if answer.lower() == 'y':
-            logging.info("")
-            logging.info(f"# Detailed Summary:")
-            for cat in reversed(summary.keys()):
-                a_list = summary[cat]
-                logging.info(f"  * {cat.upper()}: {len(a_list)}")
-                for i, c_a in enumerate(a_list):
-                    c_n = c_a['name']
-                    c_cn = self.selected_course_ids[str(c_a['course_id'])]['name']
-                    a_p = c_a['priority']
-                    a_d = c_a['due_at']
-                    d = None
-                    if a_d:
-                        d = datetime.strptime(a_d, '%Y-%m-%dT%H:%M:%SZ')
-                    # Convert to format: May 22, 2022 at 12:00 PM
-                    d_nat = "Unknown" if d is None else d.strftime('%b %d, %Y at %I:%M %p')
-                    logging.info(f"    {i + 1}. \"{c_n}\"")
-                    logging.info(f"         Course: {c_cn}")
-                    logging.info(f"         Due Date: {d_nat}")
-                    logging.info(f"         Priority: {TodoistHelper.get_priority_name(a_p)}")
-
-    @staticmethod
-    def update_task(c_a, t_task):
-        """
-        Updates an existing task from a Canvas assignment object to Todoist
-        """
-        updates_list = []
-        # Check if due date has changed
-        t_d = t_task['due']['date'] if t_task['due'] else None
-        c_d = c_a['due_at']
-        if t_d != c_d:
-            updates_list.append('due date')
-        # Check if priority has changed
-        t_p = t_task['priority']
-        c_p = c_a['priority']
-        # Print changes
-        if t_p != c_p:
-            updates_list.append('priority')
-        logging.info(f"     UPDATE: Updating Task: " + ", ".join(updates_list))
-        # Update Todoist task
-        t_task.update(due={'date': c_d, }, priority=c_p)
+        # if answer.lower() == "y":
+        #     logging.info("")
+        #     logging.info(f"# Detailed Summary:")
+        #     for summary_key in reversed(summary.keys()):
+        #         a_list = summary[summary_key]
+        #         logging.info(f"  * {summary_key.upper()}: {len(a_list)}")
+        #         for i, canvas_assignment in enumerate(a_list):
+        #             name = canvas_assignment["name"]
+        #             canvas_course_name = self.selected_course_ids[
+        #                 str(canvas_assignment["course_id"])
+        #             ]["name"]
+        #             a_p = canvas_assignment["priority"]
+        #             a_d = canvas_assignment["due_at"]
+        #             d = None
+        #             if a_d:
+        #                 d = datetime.strptime(a_d, "%Y-%m-%dT%H:%M:%SZ")
+        #             # Convert to format: May 22, 2022 at 12:00 PM
+        #             d_nat = (
+        #                 "Unknown" if d is None else d.strftime("%b %d, %Y at %I:%M %p")
+        #             )
+        #             logging.info(f'    {i + 1}. "{name}"')
+        #             logging.info(f"         Course: {canvas_course_name}")
+        #             logging.info(f"         Due Date: {d_nat}")
+        #             logging.info(
+        #                 f"         Priority: {TodoistHelper.get_priority_name(a_p)}"
+        #             )

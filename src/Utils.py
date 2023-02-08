@@ -21,21 +21,6 @@ def setup():
     return os_save_path, config_path, log_path
 
 
-def parse_args():
-    # Parse arguments and extract boolean flag -y which defaults to false
-    parser = argparse.ArgumentParser(description='Transfer Canvas assignments to Todoist')
-    parser.add_argument('-t', '--todoist', action='store_true', help='Run CanvasToTodoist')
-    parser.add_argument('-f', '--files', action='store_true', help='Run CanvasFileDownloader')
-    parser.add_argument('-a', '--all', action='store_true', help='Run both CanvasToTodoist and CanvasFileDownloader')
-    parser.add_argument('-y', '--yes', action='store_true', help='Skip confirmation prompts')
-    parser.add_argument('--reset', action='store_true', help='Reset config file')
-    if not any([arg in ["-t", "-f", "-a"] for arg in os.sys.argv]):
-        # print help if no arguments are provided
-        parser.print_help()
-        parser.error("Must have either -t or -f")
-    return parser.parse_args()
-
-
 def normalize_file_name(file_name, has_extension=True):
     rexp1 = r"%[0-9a-fA-F][0-9a-fA-F]"
     rexp2 = r"[\s+_\-:\\\/]+"
