@@ -2,7 +2,8 @@
 
 Canvas-Sync is a tool for syncing files from Canvas to your computer.
 
-It also includes a module for syncing Canvas Assignments to your Todoist account as tasks.
+It also includes a module for syncing Canvas Assignments to your Todoist account as tasks.  
+Each module can be used independently.
 
 **Modules**
 
@@ -20,6 +21,10 @@ It also includes a module for syncing Canvas Assignments to your Todoist account
 **Options & Usage**
 
 - Run the main script with the `-h` flag to see all available options and their usage: `python3 main.py -h`
+
+- Edit configuration file manually: `python3 main.py --edit`
+
+- View log file from last run: `python3 main.py --logs`
 
 **Example Crontab**
 
