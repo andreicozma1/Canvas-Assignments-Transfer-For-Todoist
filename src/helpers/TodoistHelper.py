@@ -25,9 +25,9 @@ class TodoistHelper:
             if task.project_id == project_id and task.content == title:
                 tasks.append(task)
         if len(tasks) == 0:
-            log_i(
-                f'Could not find task "{title}" in project "{project_id}"',
-            )
+            # log_i(
+            #     f'Could not find task "{title}" in project "{project_id}"',
+            # )
             return None
         if len(tasks) > 1:
             log_w(

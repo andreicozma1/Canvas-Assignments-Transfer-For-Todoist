@@ -85,6 +85,15 @@ class CanvasToTodoist:
                 return value
         return None
 
+    def process_description(self, description_text: str):
+        if description_text is not None:
+            # remove all html tags from the description
+            description_text = re.sub("<[^<]+?>", "", description_text)
+            # strip
+            description_text = description_text.strip()
+
+        return description_text
+
     def transfer_assignments_to_todoist(self, assignments):
         """
         Transfers over assignments from Canvas over to Todoist.
@@ -92,7 +101,13 @@ class CanvasToTodoist:
         """
         logging.info("# Transferring assignments to Todoist...")
 
-        summary = {"added": [], "updated": [], "is-submitted": [], "up-to-date": []}
+        summary = {
+            "added": [],
+            "updated": [],
+            "is-submitted": [],
+            "up-to-date": [],
+            "stale": [],
+        }
 
         for i, canvas_assignment in enumerate(assignments):
             # Get the canvas assignment name, due date, course name, todoist project id
@@ -115,10 +130,9 @@ class CanvasToTodoist:
             task_title = TodoistHelper.make_link_title(
                 canvas_assignment["name"], canvas_assignment["html_url"]
             )
-            task_description = canvas_assignment["description"]
-            if task_description is not None:
-                # remove all html tags from the description
-                task_description = re.sub("<[^<]+?>", "", task_description)
+            task_description = self.process_description(
+                canvas_assignment["description"]
+            )
 
             task_priority = TodoistHelper.find_priority(name, due_at)
             assignments[i]["priority"] = task_priority
@@ -140,6 +154,17 @@ class CanvasToTodoist:
                         "     INFO: Assignment submitted. Skipping Todoist task."
                     )
                     continue
+                if due_at is not None:
+                    # parsed format 2023-03-11T04:59:59Z
+                    due_at_obj = datetime.strptime(due_at, "%Y-%m-%dT%H:%M:%SZ")
+                    due_at_diff = due_at_obj - datetime.now()
+                    # if the duedate was more than 10 days ago, skip it
+                    if due_at_diff.days < -10:
+                        summary["stale"].append(canvas_assignment)
+                        logging.info(
+                            "     INFO: Assignment is stale. Skipping Todoist task."
+                        )
+                        continue
                 task = self.todoist_helper.api.add_task(
                     content=task_title,
                     description=task_description,
@@ -168,13 +193,16 @@ class CanvasToTodoist:
                     p1 = TodoistHelper.get_priority_name(task.priority)
                     p2 = TodoistHelper.get_priority_name(task_priority)
                     logging.info(f"     UPDATE: priority: {p1} -> {p2}")
-                if task_description and task.description != task_description:
+
+                task_description_curr = self.process_description(task.description)
+
+                if task_description and task_description_curr != task_description:
                     updates_list.append("description")
                     logging.info(
-                        f"     UPDATE: description: {task.description} -> {task_description}"
+                        f"     UPDATE: description: {task_description_curr} -> {task_description}"
                     )
 
-                if len(updates_list) > 0:
+                if updates_list:
                     self.todoist_helper.api.update_task(
                         task_id=task.id,
                         content=task_title,
@@ -185,7 +213,7 @@ class CanvasToTodoist:
                     )
                     summary["updated"].append(canvas_assignment)
                 else:
-                    logging.info(f"     OK: Task is already up to date!")
+                    logging.info("     OK: Task is already up to date!")
                     summary["up-to-date"].append(canvas_assignment)
 
         # Print out short summary
