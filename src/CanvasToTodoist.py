@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from pprint import pprint
 
@@ -115,6 +116,10 @@ class CanvasToTodoist:
                 canvas_assignment["name"], canvas_assignment["html_url"]
             )
             task_description = canvas_assignment["description"]
+            if task_description is not None:
+                # remove all html tags from the description
+                task_description = re.sub("<[^<]+?>", "", task_description)
+
             task_priority = TodoistHelper.find_priority(name, due_at)
             assignments[i]["priority"] = task_priority
 
