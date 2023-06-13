@@ -68,7 +68,7 @@ def main():
 
     if args.edit:
         # Open in default editor
-        os.system(f"${{EDITOR:-vi}} {config_path}")
+        os.system(f"${{EDITOR:-vi}} \"{config_path}\"")
         exit(0)
 
     if args.logs:
