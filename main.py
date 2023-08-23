@@ -16,7 +16,6 @@ What's new:
 import argparse
 import logging
 import os
-import traceback
 
 from src.CanvasFileDownloader import CanvasFileDownloader
 from src.CanvasToTodoist import CanvasToTodoist
@@ -39,7 +38,6 @@ def setup_logging():
 
 
 def main():
-
     # Parse arguments and extract boolean flag -y which defaults to false
     parser = argparse.ArgumentParser(
         description="Transfer Canvas assignments to Todoist"
@@ -57,7 +55,7 @@ def main():
         help="Run both CanvasToTodoist and CanvasFileDownloader",
     )
     parser.add_argument(
-        "-y", "--yes", action="store_true", help="Skip confirmation prompts"
+        "-y", "--yes", action="store_false", help="Skip confirmation prompts"
     )
     parser.add_argument("--reset", action="store_true", help="Reset config file")
     parser.add_argument("-e", "--edit", action="store_true", help="Edit config file")
@@ -65,10 +63,11 @@ def main():
 
     args = parser.parse_args()
     skip_confirmation_prompts = args.yes
+    print(skip_confirmation_prompts)
 
     if args.edit:
         # Open in default editor
-        os.system(f"${{EDITOR:-vi}} \"{config_path}\"")
+        os.system(f'${{EDITOR:-vi}} "{config_path}"')
         exit(0)
 
     if args.logs:

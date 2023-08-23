@@ -51,5 +51,3 @@ crontab -e
 The original codebase has been tweaked and modified quite heavily over time. The following is the link to the original project:
 
 - <https://github.com/scottquach/Canvas-Assignments-Transfer-For-Todoist>
-
-

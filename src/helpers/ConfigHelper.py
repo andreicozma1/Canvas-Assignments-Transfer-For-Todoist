@@ -8,8 +8,13 @@ from src.Utils import p_error, p_info, p_warn
 
 
 class ConfigHelper:
-
-    def __init__(self, args, config_path="config.json", input_prompt="> ", skip_confirmation_prompts=False):
+    def __init__(
+        self,
+        args,
+        config_path="config.json",
+        input_prompt="> ",
+        skip_confirmation_prompts=False,
+    ):
         self.args = args
         self.config_path = config_path
         self.input_prompt = input_prompt
@@ -52,11 +57,16 @@ class ConfigHelper:
 
     def create_config(self):
         logging.info("  - Creating configuration file...")
-        if 'canvas_api_heading' not in self.config or len(self.config['canvas_api_heading']) == 0:
-            self.config['canvas_api_heading'] = "https://canvas.instructure.com"
+        if (
+            "canvas_api_heading" not in self.config
+            or len(self.config["canvas_api_heading"]) == 0
+        ):
+            self.config["canvas_api_heading"] = "https://canvas.instructure.com"
             # Ask the user if they want to change the default heading, or use the default one
-            p_info("Default Canvas API URL: https://canvas.instructure.com.\n"
-                   "Would you like to use this? (Y/n) ")
+            p_info(
+                "Default Canvas API URL: https://canvas.instructure.com.\n"
+                "Would you like to use this? (Y/n) "
+            )
             if not self.skip_confirmation_prompts:
                 use_default_heading = input(self.input_prompt)
             else:
@@ -67,41 +77,57 @@ class ConfigHelper:
                 sys.exit(1)
             if use_default_heading.lower() != "y":
                 p_info("Please enter your desired Canvas API URL: ")
-                self.config['canvas_api_heading'] = input(self.input_prompt)
+                self.config["canvas_api_heading"] = input(self.input_prompt)
                 # if the user enters an empty string, or a string that is not a valid URL, output an error and exit
-                if len(self.config['canvas_api_heading'].strip()) == 0:
+                if len(self.config["canvas_api_heading"].strip()) == 0:
                     p_error("Error: Canvas API Heading cannot be empty.")
                     sys.exit(1)
-                if not self.config['canvas_api_heading'].startswith("https"):
-                    p_error("Error: Canvas API Heading must start with 'https'. Exiting...")
+                if not self.config["canvas_api_heading"].startswith("https"):
+                    p_error(
+                        "Error: Canvas API Heading must start with 'https'. Exiting..."
+                    )
                     sys.exit(1)
 
-        if 'canvas_api_key' not in self.config or len(self.config['canvas_api_key']) == 0:
-            p_info("Your Canvas API key has not been configured!\n"
-                   "To add an API token, go to your Canvas settings and "
-                   "click on New Access Token under Approved Integrations.\n"
-                   "Copy the token and paste below when you are done.")
+        if (
+            "canvas_api_key" not in self.config
+            or len(self.config["canvas_api_key"]) == 0
+        ):
+            p_info(
+                "Your Canvas API key has not been configured!\n"
+                "To add an API token, go to your Canvas settings and "
+                "click on New Access Token under Approved Integrations.\n"
+                "Copy the token and paste below when you are done."
+            )
             # TODO: Show notification
             if self.skip_confirmation_prompts:
-                p_error("You must configure your Canvas API key. Please run without -y argument to configure.")
+                p_error(
+                    "You must configure your Canvas API key. Please run without -y argument to configure."
+                )
                 sys.exit(1)
-            self.config['canvas_api_key'] = input(self.input_prompt)
-            if len(self.config['canvas_api_key'].strip()) == 0:
+            self.config["canvas_api_key"] = input(self.input_prompt)
+            if len(self.config["canvas_api_key"].strip()) == 0:
                 p_error("Error: Canvas API Key cannot be empty. Exiting...")
                 sys.exit(1)
 
         if self.args.todoist or self.args.all:
-            if 'todoist_api_key' not in self.config or len(self.config['todoist_api_key']) == 0:
-                p_info("Your Todoist API key has not been configured!\n"
-                       "To add an API token, go to your Todoist settings and "
-                       "copy the API token listed under the Integrations Tab.\n"
-                       "Copy the token and paste below when you are done.")
+            if (
+                "todoist_api_key" not in self.config
+                or len(self.config["todoist_api_key"]) == 0
+            ):
+                p_info(
+                    "Your Todoist API key has not been configured!\n"
+                    "To add an API token, go to your Todoist settings and "
+                    "copy the API token listed under the Integrations Tab.\n"
+                    "Copy the token and paste below when you are done."
+                )
                 # TODO: Show notification
                 if self.skip_confirmation_prompts:
-                    p_error("You must configure your Todoist API key. Please run without -y argument to configure.")
+                    p_error(
+                        "You must configure your Todoist API key. Please run without -y argument to configure."
+                    )
                     sys.exit(1)
-                self.config['todoist_api_key'] = input(self.input_prompt)
-                if len(self.config['todoist_api_key'].strip()) == 0:
+                self.config["todoist_api_key"] = input(self.input_prompt)
+                if len(self.config["todoist_api_key"].strip()) == 0:
                     p_error("Error: Todoist API Key cannot be empty. Exiting...")
                     sys.exit(1)
 
@@ -112,7 +138,7 @@ class ConfigHelper:
         Saves the configuration file to disk.
         """
         logging.info("  - Saving configuration file...")
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, "w") as f:
             json.dump(self.config, f, indent=4)
 
     def remove_config(self):

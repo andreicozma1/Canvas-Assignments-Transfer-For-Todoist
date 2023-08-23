@@ -7,8 +7,8 @@ from pick import pick
 from termcolor import colored
 
 from src.helpers.CanvasDownloadHelper import CanvasDownloadHelper
-from src.Utils import normalize_file_name, p_info
 from src.helpers.LogHelper import notify
+from src.Utils import normalize_file_name, p_info
 
 
 class CanvasHelper:
@@ -117,8 +117,7 @@ class CanvasHelper:
                 logging.info("  - Skipping invalid course entry.")
 
         logging.info(f"=> Found {len(self.courses_id_name_dict)} courses")
-        courses = config_helper.get("courses")
-        if courses is not None:
+        if courses := config_helper.get("courses"):
             logging.info("")
             logging.info("# You have previously selected courses:")
             for i, (c_id, c_obj) in enumerate(courses.items()):
@@ -169,7 +168,7 @@ class CanvasHelper:
                     "+ Create new name",
                 )
             )
-            course_name_new, indices = pick(options, pick_title)
+            course_name_new, _ = pick(options, pick_title)
 
             if course_name_new == "+ Create new name":
                 course_name_new = input("\t- Name: ")
