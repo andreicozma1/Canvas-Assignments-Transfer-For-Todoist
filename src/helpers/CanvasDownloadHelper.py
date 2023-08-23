@@ -16,7 +16,7 @@ class CanvasDownloadHelper:
     def __init__(self, api_key, canvas_api_heading="https://canvas.instructure.com"):
         self.canvas_api_heading = canvas_api_heading
         self.header = {"Authorization": f"Bearer {api_key.strip()}"}
-        p_info("# CanvasDownloadHelper: initialized")
+        p_info("# CanvasDownloadHelper: Initialized")
         logging.info(f"  - Canvas API Heading: {self.canvas_api_heading}")
         logging.info(colored(f"  - Header: {self.header}", "grey"))
 
