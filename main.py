@@ -55,7 +55,7 @@ def main():
         help="Run both CanvasToTodoist and CanvasFileDownloader",
     )
     parser.add_argument(
-        "-y", "--yes", action="store_false", help="Skip confirmation prompts"
+        "-y", "--yes", action="store_true", help="Skip confirmation prompts"
     )
     parser.add_argument("--reset", action="store_true", help="Reset config file")
     parser.add_argument("-e", "--edit", action="store_true", help="Edit config file")
