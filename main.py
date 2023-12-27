@@ -37,6 +37,30 @@ def setup_logging():
     )
 
 
+# def setup_logging():
+#     # Create a formatter for each handler
+#     file_formatter = logging.Formatter(
+#         "%(asctime)s %(levelname)6s : %(message)s [%(funcName)s():%(lineno)s]"
+#     )
+#     stream_formatter = logging.Formatter("%(message)s")
+
+#     # Create handlers
+#     file_handler = logging.FileHandler(log_path, mode="w")
+#     stream_handler = logging.StreamHandler()
+
+#     # Set levels for each handler
+#     file_handler.setLevel(logging.DEBUG)
+#     stream_handler.setLevel(logging.INFO)
+
+#     # Set formatter for each handler
+#     file_handler.setFormatter(file_formatter)
+#     stream_handler.setFormatter(stream_formatter)
+
+#     # Get the root logger and add handlers to it
+#     logging.root.addHandler(file_handler)
+#     logging.root.addHandler(stream_handler)
+
+
 def main():
     # Parse arguments and extract boolean flag -y which defaults to false
     parser = argparse.ArgumentParser(

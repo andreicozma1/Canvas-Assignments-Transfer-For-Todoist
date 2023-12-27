@@ -1,5 +1,6 @@
 import logging
 from operator import itemgetter
+import sys
 
 import requests
 from canvasapi import Canvas
@@ -47,12 +48,25 @@ class CanvasHelper:
                 f"{self.canvas_api_heading}/api/v1/courses/{str(course_id)}/assignments",
                 headers=self.header,
                 params=param,
+                timeout=10,
             )
 
-            if response.status_code == 401:
-                logging.info("Unauthorized! Check Canvas API Key")
-                exit()
-            assignments.extend(iter(response.json()))
+            # if response.status_code == 401:
+            #     logging.info("Unauthorized! Check Canvas API Key")
+            #     exit()
+            # assignments.extend(iter(response.json()))
+
+            if response.status_code == 200:
+                assignments.extend(iter(response.json()))
+            else:
+                logging.error(
+                    f"Error: {response.status_code} - {response.reason} - {response.text}"
+                )
+                notify(
+                    "Error",
+                    f"Got Status Code {response.status_code} for Course ID {course_id}",
+                )
+
         return assignments
 
     def download_course_files_all(self, course_ids, param):
