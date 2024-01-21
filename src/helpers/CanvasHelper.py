@@ -131,7 +131,9 @@ class CanvasHelper:
                 logging.info("  - Skipping invalid course entry.")
 
         logging.info(f"=> Found {len(self.courses_id_name_dict)} courses")
-        if courses := config_helper.get("courses"):
+
+        courses = config_helper.get("courses")
+        if courses:
             logging.info("")
             logging.info("# You have previously selected courses:")
             for i, (c_id, c_obj) in enumerate(courses.items()):
@@ -141,17 +143,31 @@ class CanvasHelper:
                     c_name = c_obj
                     courses[c_id] = {"name": c_name}
                 logging.info(f"  {i + 1}. {c_name}")
-            use_previous_input = (
-                "y"
-                if skip_confirmation_prompts
-                else input(
-                    "Q: Would you like to use the courses selected last time? (Y/n) "
-                )
-            )
+            # use_previous_input = (
+            #     "y"
+            #     if skip_confirmation_prompts
+            #     else input(
+            #         "Q: Would you like to use the courses selected last time? (Y/n) "
+            #     )
+            # )
 
-            logging.info("")
-            if use_previous_input.lower() == "y":
+            # logging.info("")
+            # if use_previous_input.lower() == "y":
+            #     return courses
+
+            if (
+                skip_confirmation_prompts
+                or input(
+                    "Q: Would you like to use the courses selected last time? (Y/n) "
+                ).lower()
+                == "y"
+            ):
                 return courses
+        elif skip_confirmation_prompts:
+            logging.info("")
+            logging.info("# You have not previously selected courses.")
+            logging.info("# Skipping course selection.")
+            return {}
 
         title = "Select the course(s) you would like to use (press SPACE to mark, ENTER to continue):"
 
